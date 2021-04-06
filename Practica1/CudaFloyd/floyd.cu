@@ -19,6 +19,7 @@ double cpuSecond() {
 	return((double)tp.tv_sec + (double)tp.tv_usec * 1e-6);
 }
 
+// Kernel para resolver el algoritmo de Floyd con bloques unidimensionales
 __global__ void floyd_kernel_1d(int * M, const int nverts, const int k) {
 	int ij = threadIdx.x + blockDim.x * blockIdx.x;
     const int i = ij / nverts;
@@ -35,6 +36,7 @@ __global__ void floyd_kernel_1d(int * M, const int nverts, const int k) {
   	}
 }
 
+// Kernel para resolver el algoritmo de Floyd con bloques bidimensionales
 __global__ void floyd_kernel_2d(int * M, const int nverts, const int k) {
 	int j = blockIdx.x * blockDim.x + threadIdx.x;	// Índice de filas de hebra
 	int i = blockIdx.y * blockDim.y + threadIdx.y; 	// Índice de columnas de hebra
@@ -54,6 +56,44 @@ __global__ void floyd_kernel_2d(int * M, const int nverts, const int k) {
 			M[ij] = Mij;
 		}
   	}
+}
+
+// Kernel para calcular la longitud del camino de mayor longitud dentro de los caminos
+// más cortos encontrados usando anteriormente el algoritmo de Floyd
+// Se realiza mediante reducción
+__global__ void mayor_longitud_reduce(int * M, int * max, const int nverts) {
+	extern __shared__ int sdata[];	// Datos en memoria compartida
+
+	int tid = threadIdx.x;
+	int ij = threadIdx.x + blockDim.x * blockIdx.x;	// Índice global de hebra
+    const int i = ij / nverts;
+    const int j = ij - i * nverts;
+
+	// Comprobar que la hebra del bloque puede operar en la matriz y obtener su distancia
+	// Si no, se le pone un valor demasiado bajo para que no pueda ser el máximo
+	sdata[tid] = (i < nverts && j < nverts && M[i * nverts + j] != INF) ? M[i * nverts + j] : -1000000;
+	// Esperar a que acaben todas las hebras para terminar de llenar la memoria compartida
+	__syncthreads();
+
+	// Hacer la reducción en memoria compartida
+	// Se hace una división por dos más eficiente mediante un desplazamiento de bits
+	for (int s = blockDim.x / 2 ; s > 0 ; s >>= 1) {
+		// Comprobar que la hebra actual está dentro de la mitad que está operando
+		if (tid < s) {
+			// Calcular máximo en la posición que le corresponde a la hebra actual
+			if (sdata[tid] < sdata[tid + s]) {
+				sdata[tid] = sdata[tid + s];
+			}
+		}
+
+		// Esperar a que acaben todas las hebras para poder decidir el máximo del bloque
+		__syncthreads();
+	}
+
+	// La primera hebra se ocupa de escribir resultado de este bloque en la memoria local
+	if (tid == 0) {
+		max[blockIdx.x] = sdata[0];
+	}
 }
 
 int main (int argc, char *argv[]) {
@@ -188,6 +228,30 @@ int main (int argc, char *argv[]) {
 
 	// Ganancia en velocidad de ambas versiones GPU con respecto a la monohebra
 	cout << tcpu / tgpu1 << " " << tcpu / tgpu2 << endl;
+
+	// Tamaño del bloque (número de hebras por bloque)
+	int threadsPerBlock = blocksize * blocksize;
+	// Tamaño del grid (número de bloques por grid)
+	int blocksPerGrid = (nverts2 + threadsPerBlock - 1) / threadsPerBlock;
+	// Tamaño de la memoria compartida
+	int smemSize = threadsPerBlock * sizeof(int);
+	// Longitud del camino de mayor longitud
+	int * d_max; 
+	cudaMalloc ((void **) &d_max, sizeof(int)*blocksPerGrid);
+
+	// Calcular la longitud del camino de mayor longitud
+	mayor_longitud_reduce<<< blocksPerGrid, threadsPerBlock, smemSize >>>(d_In_M, d_max, nverts);
+	
+	// Terminar de computar el reduce en CPU
+	// Se calcula el máximo de los encontrados en los distintos bloques
+	int * h_max = (int*) malloc(blocksPerGrid*sizeof(int));
+	cudaMemcpy(h_max, d_max, blocksPerGrid*sizeof(int), cudaMemcpyDeviceToHost);
+	int longitudMaxima = -1000000;
+	for (int i = 0 ; i < blocksPerGrid ; i++) {
+		longitudMaxima = (longitudMaxima > h_max[i]) ? longitudMaxima : h_max[i];
+	}
+
+	//cout << "LONGITUD DEL CAMINO MAYOR = " << longitudMaxima << endl;
 
 	for (int i = 0 ; i < nverts ; i++)
 		for (int j = 0 ; j < nverts ; j++)
