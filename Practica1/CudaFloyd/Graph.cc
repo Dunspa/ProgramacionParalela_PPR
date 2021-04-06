@@ -10,8 +10,12 @@ using namespace std;
 Graph::Graph() {
 }
 
+int Graph::getVertices() {
+	return vertices;
+}
+
 void Graph::fija_nverts(const int nverts) {
-	A = new int[nverts*nverts];
+	A = new int[nverts * nverts];
 	vertices = nverts;
 }
 
@@ -20,16 +24,17 @@ void Graph::inserta_arista(const int vertA, const int vertB, const int edge) {
 	A[vertA * vertices + vertB] = edge;
 }
 
-int Graph::arista(const int ptA,const int ptB) {
+int Graph::arista(const int ptA, const int ptB) {
   	return A[ptA * vertices + ptB];
 }
 
 void Graph::imprime() {
-	int i,j,vij;
+	int i, j, vij;
+
 	for (i = 0 ; i < vertices ; i++) {
-		cout << "A["<<i << ",*]= ";
+		cout << "A[" << i << ",*]= ";
 	
-		for (j=0;j<vertices;j++) {
+		for (j = 0 ; j < vertices ; j++) {
 			if (A[i * vertices + j] == INF) 
 				cout << "INF";
 			else  
@@ -52,21 +57,23 @@ void Graph::lee(char *filename) {
 		exit(-1);
 	}
 
-	//Obten el numero de vertices
+	// Obtener el numero de vertices
 	char buf[BUF_SIZE];
-	infile.getline(buf,BUF_SIZE,'\n');
+	infile.getline(buf, BUF_SIZE, '\n');
 	vertices = atoi(buf);
 	A = new int[vertices * vertices];
 	
-	int i,j;
-	for(i = 0 ; i < vertices ; i++)
-		for(j = 0 ; j < vertices ; j++)
+	// Rellenar matriz de adyacencias por defecto
+	int i, j;
+	for (i = 0 ; i < vertices ; i++)
+		for (j = 0 ; j < vertices ; j++)
 			if (i == j) 
 				A[i * vertices + j] = 0;
 			else 
 				A[i * vertices + j] = INF;
 		
-	while (infile.getline(buf,BUF_SIZE) && infile.good() && !infile.eof()) {
+	// Rellenar matriz de adyacencias con los valores del archivo
+	while (infile.getline(buf, BUF_SIZE) && infile.good() && !infile.eof()) {
 		char *vertname2 = strpbrk(buf, " \t");
 		*vertname2++ = '\0';
 		char *buf2 = strpbrk(vertname2, " \t");
@@ -81,3 +88,6 @@ void Graph::lee(char *filename) {
 	}
 }
 
+int * Graph::Get_Matrix() {
+	return A;
+}

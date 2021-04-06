@@ -7,17 +7,17 @@ const int INF = 1000000;
 class Graph {
 private:
 	int *A;
-
-public:
 	int vertices;
 
+public:
     Graph();
+	int getVertices();
 	void fija_nverts(const int verts);
 	void inserta_arista(const int ptA,const int ptB, const int edge);
 	int arista(const int ptA,const int ptB);
     void imprime();
     void lee(char *filename);
-	int * Get_Matrix(){return A;}
+	int * Get_Matrix();
 };
 
 
