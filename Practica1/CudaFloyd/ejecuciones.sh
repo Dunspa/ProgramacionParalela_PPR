@@ -17,4 +17,4 @@ do
 done
 
 # Generar gráficas
-# gnuplot -p graficas.gp
+gnuplot -p graficas.gp

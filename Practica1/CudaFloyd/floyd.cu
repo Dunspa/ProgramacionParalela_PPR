@@ -36,18 +36,20 @@ __global__ void floyd_kernel_1d(int * M, const int nverts, const int k) {
 }
 
 __global__ void floyd_kernel_2d(int * M, const int nverts, const int k) {
-	int j = blockIdx.x * blockDim.x + threadIdx.x;	// Índice de filas
-	int i = blockIdx.y * blockDim.y + threadIdx.y; 	// Índice de columnas
+	int j = blockIdx.x * blockDim.x + threadIdx.x;	// Índice de filas de hebra
+	int i = blockIdx.y * blockDim.y + threadIdx.y; 	// Índice de columnas de hebra
 
 	int ij = i * nverts + j;	// Índice global del elemento en la matriz
+	// Para poder acceder a los valores dentro de la matriz por fila y columna
 	int i2 = ij / nverts;		// Fila correspondiente al índice global
 	int j2 = ij - i2 * nverts; 	// Columna correspondiente al índice global
 
     if (i < nverts && j < nverts) {
-		int Mij = M[ij];
+		int Mij = M[i2 * nverts + j2];
 
-		if (i != j && i != k && j != k) { // Evitar los 0 de la matriz (evitar el mismo vertice)
-			int Mikj = M[i * nverts + k] + M[k * nverts + j];
+		// Evitar los 0 de la matriz (evitar el mismo vertice)
+		if (i != j && i != k && j != k) {
+			int Mikj = M[i2 * nverts + k] + M[k * nverts + j2];
 			Mij = (Mij > Mikj) ? Mikj : Mij;
 			M[ij] = Mij;
 		}
