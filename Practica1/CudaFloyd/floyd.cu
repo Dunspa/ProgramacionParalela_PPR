@@ -35,6 +35,24 @@ __global__ void floyd_kernel_1d(int * M, const int nverts, const int k) {
   	}
 }
 
+__global__ void floyd_kernel_2d(int * M, const int nverts, const int k) {
+	int j = blockIdx.x * blockDim.x + threadIdx.x;	// Índice de filas
+	int i = blockIdx.y * blockDim.y + threadIdx.y; 	// Índice de columnas
+
+	int ij = i * nverts + j;	// Índice global del elemento en la matriz
+	int i2 = ij / nverts;		// Fila correspondiente al índice global
+	int j2 = ij - i2 * nverts; 	// Columna correspondiente al índice global
+
+    if (i < nverts && j < nverts) {
+		int Mij = M[ij];
+
+		if (i != j && i != k && j != k) { // Evitar los 0 de la matriz (evitar el mismo vertice)
+			int Mikj = M[i * nverts + k] + M[k * nverts + j];
+			Mij = (Mij > Mikj) ? Mikj : Mij;
+			M[ij] = Mij;
+		}
+  	}
+}
 
 int main (int argc, char *argv[]) {
 	if (argc != 3) {
@@ -64,6 +82,7 @@ int main (int argc, char *argv[]) {
 	//G.imprime();
 
 	const int nverts = G.getVertices();
+	cout << nverts << " ";
 	const int niters = nverts;
 	const int nverts2 = nverts * nverts;
 
@@ -103,7 +122,7 @@ int main (int argc, char *argv[]) {
 	// Tiempo en CPU
   	cout << tcpu << " ";
 
-	// GPU phase
+	// GPU phase 1
 	t1 = cpuSecond();
 
 	err = cudaMemcpy(d_In_M, A, size, cudaMemcpyHostToDevice);
@@ -112,9 +131,8 @@ int main (int argc, char *argv[]) {
 	}
 
 	for (int k = 0 ; k < niters ; k++) {
-		//printf("CUDA kernel launch \n");
 		// Tamaño del bloque (número de hebras por bloque)
-	 	int threadsPerBlock = blocksize;
+	 	int threadsPerBlock = blocksize * blocksize;
 		// Tamaño del grid (número de bloques por grid)
 	 	int blocksPerGrid = (nverts2 + threadsPerBlock - 1) / threadsPerBlock;
 
@@ -122,7 +140,7 @@ int main (int argc, char *argv[]) {
 	  	err = cudaGetLastError();
 
 	  	if (err != cudaSuccess) {
-	  		fprintf(stderr, "Failed to launch kernel! ERROR= %d\n",err);
+	  		fprintf(stderr, "Failed to launch kernel 1! ERROR= %d\n",err);
 	  		exit(EXIT_FAILURE);
 		}
 	}
@@ -134,8 +152,40 @@ int main (int argc, char *argv[]) {
 	// Tiempo en GPU con bloques unidimensionales
 	cout << tgpu1 << " ";
 
-	// Ganancia en velocidad
-	cout << tcpu / tgpu1 << endl;
+	// GPU phase 2
+	t1 = cpuSecond();
+
+	err = cudaMemcpy(d_In_M, A, size, cudaMemcpyHostToDevice);
+	if (err != cudaSuccess) {
+		cout << "ERROR COPIA A GPU" << endl;
+	}
+
+	for (int k = 0 ; k < niters ; k++) {
+		// Tamaño del bloque (número de hebras por bloque)
+		dim3 threadsPerBlock(blocksize, blocksize);
+		// Tamaño del grid (número de bloques por grid)
+		int tamx = ceil((float) (nverts) / threadsPerBlock.x);
+		int tamy = ceil((float) (nverts) / threadsPerBlock.y);
+		dim3 blocksPerGrid(tamx, tamy);
+
+	  	floyd_kernel_2d<<< blocksPerGrid, threadsPerBlock >>>(d_In_M, nverts, k);
+	  	err = cudaGetLastError();
+
+	  	if (err != cudaSuccess) {
+	  		fprintf(stderr, "Failed to launch kernel 2! ERROR= %d\n",err);
+	  		exit(EXIT_FAILURE);
+		}
+	}
+
+	cudaMemcpy(c_Out_M, d_In_M, size, cudaMemcpyDeviceToHost);
+	cudaDeviceSynchronize();
+	double tgpu2 = cpuSecond() - t1;
+
+	// Tiempo en GPU con bloques bidimensionales
+	cout << tgpu2 << " ";
+
+	// Ganancia en velocidad de ambas versiones GPU con respecto a la monohebra
+	cout << tcpu / tgpu1 << " " << tcpu / tgpu2 << endl;
 
 	for (int i = 0 ; i < nverts ; i++)
 		for (int j = 0 ; j < nverts ; j++)
@@ -143,4 +193,9 @@ int main (int argc, char *argv[]) {
 				cout << "Error (" << i << "," << j << ")   " 
 					<< c_Out_M[i * nverts + j] << "..." 
 					<< G.arista(i,j) << endl;
+
+	// Liberar toda la memoria
+	free(c_Out_M);
+	free(A);
+	cudaFree(d_In_M);
 }
