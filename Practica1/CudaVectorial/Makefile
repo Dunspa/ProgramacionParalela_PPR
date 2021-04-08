@@ -9,9 +9,8 @@ GENCODE_SMXX    := -gencode arch=compute_70,code=compute_70
 GENCODE_FLAGS   ?= $(GENCODE_SM30) $(GENCODE_SM35) $(GENCODE_SM35) $(GENCODE_SM50) $(GENCODE_SM60) $(GENCODE_SMXX)
 
 
-advection1d:advection1d.cu
-	nvcc -I./includes  -O3 -m64   $(GENCODE_FLAGS) advection1d.cu -o advection1d
+vectorial:vectorial.cu
+	nvcc -I./includes  -O3 -m64   $(GENCODE_FLAGS) vectorial.cu -o vectorial
 
 clean: 
-	rm advection1d advection2d *.o *~
-      
+	rm vectorial *.o *~
