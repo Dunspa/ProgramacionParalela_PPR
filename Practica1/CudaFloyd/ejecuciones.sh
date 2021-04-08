@@ -4,6 +4,7 @@
 # Compilar y eliminar resultados anteriores
 make
 rm resultados/tiempos*
+rm resultados/grafica*
 
 # Ejecutar algoritmo de Floyd con diferentes tamaño de bloques CUDA 
 # (8x8, 16x16, 32x32)
