@@ -45,8 +45,8 @@ __global__ void vectorial_global(float * A, float * B, const int n) {
 		Ai = B[i];
 		Aip1 = B[i + 1];  
 		Aip2 = B[i + 2];
-		B[i] = (pow(Aim2, 2) + 2.0 * pow(Aim1, 2) + pow(Ai, 2) 
-		- 3.0 * pow(Aip1, 2) + 5.0 * pow(Aip2, 2)) / 24.0; 
+		B[i] = (pow(Aim2, 5) + 2.0 * pow(Aim1, 5) + pow(Ai, 5) 
+		- 3.0 * pow(Aip1, 5) + 5.0 * pow(Aip2, 5)) / 24.0; 
 	}
 }
 
@@ -209,8 +209,7 @@ int main(int argc, char* argv[]) {
 	mx = maximo_reduce_cpu(h_max, blocksPerGrid);
 
 	// Mostrar tiempos de CPU, GPU SHARED, GPU GLOBAL, SPEEDUP SHARED, SPEEDUP GLOBAL
-	cout << Tcpu << " " << Tgpu1 << " " << Tgpu2 << " " 
-		 << Tcpu / Tgpu1 << " " << Tcpu / Tgpu2;
+	printf("%i %.7f %.7f %.7f %.7f %.7f\n", blocksize, Tcpu, Tgpu1, Tgpu2, Tcpu / Tgpu1, Tcpu / Tgpu2);
 
 	return 0;
 }
