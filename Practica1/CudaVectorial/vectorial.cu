@@ -7,17 +7,6 @@
 
 using namespace std;
 
-int index(int i) {
-	return i + 1;
-}
-
-// Intercambiar dos punteros a float
-void swap_pointers(float * *a, float * *b) {
-	float * tmp = *a;
-	*a = *b;
-	*b = tmp;
-}
-
 // Kernel de advección lineal (memoria compartida)
 __global__ void FD_kernel2(float * d_phi, float * d_phi_new, float cu, int n) { 
     int li = threadIdx.x + 1;   // índice local del vector en memoria compartida
