@@ -178,7 +178,7 @@ int main(int argc, char* argv[]) {
 	// Tamaño del grid (número de bloques por grid)
 	int blocksPerGrid = ceil((float) (n + 2) / threadsPerBlock);
 	// Tamaño de la memoria compartida
-	int smemSize = threadsPerBlock * sizeof(float);
+	int smemSize = n * sizeof(float);
 
 	// Tiempo inicial
 	double t1 = clock();

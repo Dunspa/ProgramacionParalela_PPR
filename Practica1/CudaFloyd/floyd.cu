@@ -46,7 +46,7 @@ __global__ void floyd_kernel_2d(int * M, const int nverts, const int k) {
 	int i2 = ij / nverts;		// Fila correspondiente al índice global
 	int j2 = ij - i2 * nverts; 	// Columna correspondiente al índice global
 
-    if (i < nverts && j < nverts) {
+    if (i2 < nverts && j2 < nverts) {
 		int Mij = M[i2 * nverts + j2];
 
 		// Evitar los 0 de la matriz (evitar el mismo vertice)
