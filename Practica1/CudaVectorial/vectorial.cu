@@ -185,6 +185,8 @@ int main(int argc, char* argv[]) {
 
 	// Realizar operación vectorial en memoria compartida
 	vectorial_shared<<< blocksPerGrid, threadsPerBlock, smemSize >>>(A, B, n);
+
+	cudaDeviceSynchronize();
 	
 	double Tgpu1 = clock();
 	Tgpu1 = (Tgpu1 - t1) / CLOCKS_PER_SEC;
@@ -194,6 +196,8 @@ int main(int argc, char* argv[]) {
 
 	// Realizar operación vectorial en memoria global
 	vectorial_global<<< blocksPerGrid, threadsPerBlock >>>(A, B, n);
+
+	cudaDeviceSynchronize();
 	
 	double Tgpu2 = clock();
 	Tgpu2 = (Tgpu2 - t1) / CLOCKS_PER_SEC;
