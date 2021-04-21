@@ -40,11 +40,11 @@ __global__ void vectorial_global(float * A, float * B, const int n) {
 	if (i >= 2 && i < n + 2) {
 		// Hacer la operación usando la memoria global
 		// Cada hebra se ocupa de una posición del vector B
-		Aim2 = B[i - 2];
-		Aim1 = B[i - 1];  
-		Ai = B[i];
-		Aip1 = B[i + 1];  
-		Aip2 = B[i + 2];
+		Aim2 = A[i - 2];
+		Aim1 = A[i - 1];  
+		Ai = A[i];
+		Aip1 = A[i + 1];  
+		Aip2 = A[i + 2];
 		B[i] = (pow(Aim2, 5) + 2.0 * pow(Aim1, 5) + pow(Ai, 5) 
 		- 3.0 * pow(Aip1, 5) + 5.0 * pow(Aip2, 5)) / 24.0; 
 	}
@@ -184,18 +184,20 @@ int main(int argc, char* argv[]) {
 	double t1 = clock();
 
 	// Realizar operación vectorial en memoria compartida
-	vectorial_shared<<< blocksPerGrid, threadsPerBlock, smemSize >>>(A, B, n);
+	vectorial_shared<<< blocksPerGrid, threadsPerBlock, smemSize >>>(d_A, d_B, n);
 
 	cudaDeviceSynchronize();
 	
 	double Tgpu1 = clock();
 	Tgpu1 = (Tgpu1 - t1) / CLOCKS_PER_SEC;
 
+	cudaMemcpy(d_A, A, n + 4, cudaMemcpyHostToDevice);
+
 	// Tiempo inicial
 	t1 = clock();
 
 	// Realizar operación vectorial en memoria global
-	vectorial_global<<< blocksPerGrid, threadsPerBlock >>>(A, B, n);
+	vectorial_global<<< blocksPerGrid, threadsPerBlock >>>(d_A, d_B, n);
 
 	cudaDeviceSynchronize();
 	
@@ -205,7 +207,7 @@ int main(int argc, char* argv[]) {
 	// Calcular el valor máximo de todos los valores almacenados en B
 	float * d_max; 
 	cudaMalloc ((void **) &d_max, sizeof(float)*blocksPerGrid);
-	maximo_reduce<<< blocksPerGrid, threadsPerBlock, smemSize >>>(B, d_max, n);	
+	maximo_reduce<<< blocksPerGrid, threadsPerBlock, smemSize >>>(d_B, d_max, n);	
 	float * h_max = (float*) malloc(blocksPerGrid*sizeof(float));
 	cudaMemcpy(h_max, d_max, blocksPerGrid*sizeof(float), cudaMemcpyDeviceToHost);
 

@@ -191,6 +191,13 @@ int main (int argc, char *argv[]) {
 	cudaDeviceSynchronize();
 	double tgpu1 = cpuSecond() - t1;
 
+	for (int i = 0 ; i < nverts ; i++)
+		for (int j = 0 ; j < nverts ; j++)
+			if (abs(c_Out_M[i * nverts + j] - G.arista(i, j)) > 0)
+				cout << "Error (" << i << "," << j << ")   " 
+					<< c_Out_M[i * nverts + j] << "..." 
+					<< G.arista(i,j) << endl;
+
 	// Tiempo en GPU con bloques unidimensionales
 	cout << tgpu1 << " ";
 
@@ -223,6 +230,13 @@ int main (int argc, char *argv[]) {
 	cudaDeviceSynchronize();
 	double tgpu2 = cpuSecond() - t1;
 
+	for (int i = 0 ; i < nverts ; i++)
+		for (int j = 0 ; j < nverts ; j++)
+			if (abs(c_Out_M[i * nverts + j] - G.arista(i, j)) > 0)
+				cout << "Error (" << i << "," << j << ")   " 
+					<< c_Out_M[i * nverts + j] << "..." 
+					<< G.arista(i,j) << endl;
+
 	// Tiempo en GPU con bloques bidimensionales
 	cout << tgpu2 << " ";
 
@@ -252,13 +266,6 @@ int main (int argc, char *argv[]) {
 	}
 
 	//cout << "LONGITUD DEL CAMINO MAYOR = " << longitudMaxima << endl;
-
-	for (int i = 0 ; i < nverts ; i++)
-		for (int j = 0 ; j < nverts ; j++)
-			if (abs(c_Out_M[i * nverts + j] - G.arista(i, j)) > 0)
-				cout << "Error (" << i << "," << j << ")   " 
-					<< c_Out_M[i * nverts + j] << "..." 
-					<< G.arista(i,j) << endl;
 
 	// Liberar toda la memoria
 	free(c_Out_M);
