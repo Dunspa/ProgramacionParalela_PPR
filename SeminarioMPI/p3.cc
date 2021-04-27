@@ -49,7 +49,6 @@ int main(int argc, char *argv[]) {
     VectorA.resize(tama, 0);
     VectorB.resize(tama/size, 0);   // Subvector local
     VectorALocal.resize(tama/size, 0);
-    //VectorBLocal.resize(tama/size, 0);
     if (rank == 0) {
         for (long i = 0 ; i < tama ; ++i) {
             VectorA[i] = i + 1; // Recibe valores 1, 2, 3, ..., tama
