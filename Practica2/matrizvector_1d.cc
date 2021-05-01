@@ -76,15 +76,18 @@ int main(int argc, char *argv[]) {
         // Rellenamos A y x con valores aleatorios
         srand(time(0));
 
-        if (!modoGraficas) {
+        if (!modoGraficas)
             cout << "La matriz y el vector generados son " << endl;
-            for (unsigned int i = 0 ; i < n ; i++) {
-                for (unsigned int j = 0 ; j < n ; j++) {
-                    if (j == 0) {
+        for (unsigned int i = 0 ; i < n ; i++) {
+            for (unsigned int j = 0 ; j < n ; j++) {
+                if (j == 0) {
+                    if (!modoGraficas)
                         cout << "[";
-                    }
+                }
 
-                    A[i][j] = rand() % 1000;
+                A[i][j] = rand() % 1000;
+
+                if (!modoGraficas) {
                     cout << A[i][j];
 
                     if (j == n - 1) {
@@ -92,13 +95,15 @@ int main(int argc, char *argv[]) {
                     } else {
                         cout << " ";
                     }
-                }
-
-                x[i] = rand() % 100;
-                cout << "\t [" << x[i] << "]" << endl;
+                }  
             }
-            cout << endl;
+
+            x[i] = rand() % 100;
+
+            if (!modoGraficas)
+                cout << "\t [" << x[i] << "]" << endl;
         }
+        cout << endl;
 
         // Reservamos espacio para la comprobación
         comprueba = new int [n];
@@ -151,7 +156,7 @@ int main(int argc, char *argv[]) {
 
     // Recogemos los escalares de la multiplicación en un vector
     // Se hace en el mismo orden que el scatter
-    MPI_Gather(&subFinal[0], 2, MPI_INT, y, 2, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Gather(&subFinal[0], nfilas, MPI_INT, y, nfilas, MPI_INT, 0, MPI_COMM_WORLD);
 
     MPI_Finalize();
 
@@ -161,6 +166,7 @@ int main(int argc, char *argv[]) {
         // Comprobar si hay diferencia entre el resultado secuencial y paralelo
         if (!modoGraficas)
             cout << "El resultado obtenido y el esperado son: " << endl;
+        
         for (unsigned int i = 0 ; i < n ; i++) {
             if (!modoGraficas)
                 cout << "\t" << y[i] << "\t|\t" << comprueba[i] << endl;
