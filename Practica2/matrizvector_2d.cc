@@ -19,7 +19,7 @@ int main(int argc, char *argv[]) {
     int rank, size, n;
     int rank_2d;
     int rank_fila, rank_columna, rank_diagonal, size_fila, size_columna, size_diagonal;
-    int **A, *x, *y, *miBloque, *comprueba, *subFinal, *buf_envio;
+    int **A, *x, *y, *miBloque, *comprueba, *subFinal, *buf_envio, *buf_recep;
     double tInicio, tFin, tInicioSec, tFinSec;
     bool modoGraficas = false;
     MPI_Status estado;
@@ -77,10 +77,11 @@ int main(int argc, char *argv[]) {
     MPI_Comm_size(comm_columna, &size_columna);
     MPI_Comm_size(comm_diagonal, &size_diagonal);
 
-
     // Leer parámetros
-    /*if (argc < 2) {
-        cout << "Número de parámetros incorrecto, es necesario indicar el tamaño del vector" << endl;
+    if (argc < 2) {
+        if (rank == 0)
+            cout << "Número de parámetros incorrecto, es necesario indicar el tamaño del vector" << endl;
+        
         exit (-1);
     } else {
         // Se asume que n es múltiplo de raiz de size
@@ -95,6 +96,10 @@ int main(int argc, char *argv[]) {
     // Reserva de vectores y matriz
     A = new int *[n];
     x = new int [n];
+    buf_envio = new int [n * n];
+
+    // Tamaño de las filas de las submatrices
+    int tam = n / sqrt(size);
 
     // El proceso P0 genera inicialmente la matriz A
     if (rank == 0) {
@@ -137,6 +142,26 @@ int main(int argc, char *argv[]) {
                 cout << "\t [" << x[i] << "]" << endl;
         }
 
+        // Definir tipo de bloque cuadrado
+        MPI_Type_vector(tam, tam, n, MPI_INT, &MPI_BLOQUE);
+        MPI_Type_commit(&MPI_BLOQUE);
+
+        // Empaquetar bloque en el buffer de envío
+        for (int i = 0, posicion = 0 ; i < size ; ++i) {
+            // Calculo la posición de comienzo de cada submatriz
+            int raiz = sqrt(size);
+            int fila_P = i / raiz;
+            int columna_P = i % raiz;
+            int comienzo = (columna_P * tam) + (fila_P * tam * tam * sqrt(size));
+            
+            MPI_Pack(&A[0], 1, MPI_BLOQUE, buf_envio, sizeof(int) * n * n, &posicion, MPI_COMM_WORLD);
+        }
+
+        // Destruir matriz local
+        delete [] A;
+        // Liberar tipo de bloque
+        MPI_Type_free(&MPI_BLOQUE);
+
         // Reservamos espacio para la comprobación
         comprueba = new int [n];
 
@@ -154,9 +179,9 @@ int main(int argc, char *argv[]) {
         tFinSec = MPI_Wtime();
     }
 
-    // Número de elementos y filas de la matriz que tiene cada proceso
-    int nfilas = n / size;
-    int nelementos = (n * n) / size;
+    // Distribución de la matriz entre los procesos (desde el proceso 0)
+    buf_recep = new int [tam * tam];
+    MPI_Scatter(buf_envio, sizeof(int) * tam * tam, MPI_PACKED, buf_recep, tam * tam, MPI_INT, 0, MPI_COMM_WORLD);
 
     // Reservamos espacio para el bloque de filas local de cada proceso
     miBloque = new int [nelementos];
@@ -165,7 +190,7 @@ int main(int argc, char *argv[]) {
     subFinal = new int [nfilas];
 
     // Repartimos n/p filas por cada proceso
-    MPI_Scatter(A[0], nelementos, MPI_INT, miBloque, nelementos, MPI_INT, 0, MPI_COMM_WORLD);
+    //MPI_Scatter(A[0], nelementos, MPI_INT, miBloque, nelementos, MPI_INT, 0, MPI_COMM_WORLD);
 
     // Compartimos el vector entre todos los procesos
     MPI_Bcast(x, n, MPI_INT, 0, MPI_COMM_WORLD);
@@ -234,8 +259,7 @@ int main(int argc, char *argv[]) {
     }
 
     delete [] x;
-    delete [] A;
-    delete [] miBloque;*/
+    delete [] miBloque;
 
     return 0;
 }
