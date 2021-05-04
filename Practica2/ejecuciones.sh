@@ -4,7 +4,7 @@
 # Compilar y eliminar resultados anteriores
 make
 rm resultados/tiempos*
-rm resultados/grafica.png
+rm resultados/grafica*
 
 # Ejecutar el algoritmo 1d para distinto tamaño del problema
 for n in 300 600 900 1200 1400 

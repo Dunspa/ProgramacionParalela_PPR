@@ -103,7 +103,6 @@ int main(int argc, char *argv[]) {
             if (!modoGraficas)
                 cout << "\t [" << x[i] << "]" << endl;
         }
-        cout << endl;
 
         // Reservamos espacio para la comprobación
         comprueba = new int [n];
