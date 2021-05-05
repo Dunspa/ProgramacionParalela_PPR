@@ -19,7 +19,7 @@ int main(int argc, char *argv[]) {
     int rank, size, n;
     int rank_2d;
     int rank_fila, rank_columna, rank_diagonal, size_fila, size_columna, size_diagonal;
-    int **A, *x, *xj, *y, *miBloque, *comprueba, *subFinal, *buf_envio, *buf_recep;
+    int **A, *x, *xj, *y, *y_parcial, *yi, *comprueba, *buf_envio, *buf_recep;
     double tInicio, tFin, tInicioSec, tFinSec;
     bool modoGraficas = false;
     MPI_Status estado;
@@ -99,7 +99,8 @@ int main(int argc, char *argv[]) {
     buf_envio = new int [n * n];
 
     // Tamaño de las filas de las submatrices
-    int tam = n / sqrt(size);
+    int raiz = sqrt(size);
+    int tam = n / raiz;
 
     // El proceso P0 genera inicialmente la matriz A y el vector x
     if (rank == 0) {
@@ -149,12 +150,11 @@ int main(int argc, char *argv[]) {
         // Empaquetar bloque en el buffer de envío
         for (int i = 0, posicion = 0 ; i < size ; ++i) {
             // Calculo la posición de comienzo de cada submatriz
-            int raiz = sqrt(size);
             int fila_P = i / raiz;
             int columna_P = i % raiz;
-            int comienzo = (columna_P * tam) + (fila_P * tam * tam * sqrt(size));
+            int comienzo = (columna_P * tam) + (fila_P * tam * tam * raiz);
             
-            MPI_Pack(&A[0], 1, MPI_BLOQUE, buf_envio, sizeof(int) * n * n, &posicion, MPI_COMM_WORLD);
+            MPI_Pack(A[0], 1, MPI_BLOQUE, buf_envio, sizeof(int) * n * n, &posicion, MPI_COMM_WORLD);
         }
 
         // Liberar tipo de bloque
@@ -183,7 +183,7 @@ int main(int argc, char *argv[]) {
     // Distribución de la matriz entre los procesos (desde el proceso 0)
     buf_recep = new int [tam * tam];
     MPI_Scatter(buf_envio, sizeof(int) * tam * tam, MPI_PACKED, buf_recep, tam * tam, MPI_INT, 0, MPI_COMM_WORLD);
-
+    
     // Distribución de cada subvector xj 
     xj = new int [tam];
     // Scatter sobre diagonal
@@ -195,24 +195,42 @@ int main(int argc, char *argv[]) {
     MPI_Bcast(xj, tam, MPI_INT, coords[1], comm_columna);
 
     // Barrera para asegurar que todos los procesos comiencen a la vez
-    /*MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(MPI_COMM_WORLD);
     tInicio = MPI_Wtime();
 
     // Se tiene más de un subvector final, se calcula cada vez un resultado
-    for (int i = 0 ; i < nfilas ; ++i) {
-        subFinal[i] = 0;
+    y_parcial = new int [tam];
+    for (int i = 0 ; i < tam ; ++i) {
+        y_parcial[i] = 0;
 
-        for (int j = 0 ; j < n ; j++) {
-            subFinal[i] += miBloque[j + (n * i)] * x[j];
+        for (int j = 0 ; j < tam ; ++j) {
+            y_parcial[i] += buf_recep[j + (n * i)] * xj[j];
         }
     }
+
+    /*for (int i = 0 ; i < tam ; ++i) {
+        cout << " Proceso " << rank << ": " << y_parcial[i];
+    }
+    cout << endl;
+
+
+    // Reducir por filas el resultado de cada subvector
+    yi = new int [tam];
+    MPI_Reduce(y_parcial, yi, tam, MPI_INT, MPI_SUM, coords[0], comm_fila);
 
     MPI_Barrier(MPI_COMM_WORLD);
     tFin = MPI_Wtime();
 
-    // Recogemos los escalares de la multiplicación en un vector
-    // Se hace en el mismo orden que el scatter
-    MPI_Gather(&subFinal[0], nfilas, MPI_INT, y, nfilas, MPI_INT, 0, MPI_COMM_WORLD);
+    /*if (rank == 0 || rank == 3) {
+        for (int i = 0 ; i < tam ; ++i) {
+            cout << yi[i] << " ";
+        }   
+    }*/
+
+    // Reunir todo el vector y en el procesador 0
+    /*if (coords[0] = coords[1]) {
+        MPI_Gather(yi, n, MPI_INT, y, n, MPI_INT, 0, comm_diagonal);
+    }
 
     MPI_Finalize();
 
@@ -258,13 +276,12 @@ int main(int argc, char *argv[]) {
     }
 
     delete [] x;
-    delete [] miBloque;*/
 
-    cout << endl;
+    /*cout << endl;
     for (int i = 0 ; i < tam ; ++i) {
         cout << "Proceso " << rank << ": " << xj[i] << " ";
     }
-    cout << endl;
+    cout << endl;*/
     
     MPI_Finalize();
     return 0;
