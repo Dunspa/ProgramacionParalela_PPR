@@ -48,8 +48,6 @@ int main(int argc, char *argv[]) {
 
     // Crear topología cartesiana de procesos 2d
     int ndims = 2;
-    if (rank == 0)
-        cout << "Creando topología cartesiana de 2 dimensiones" << endl;
     int dims[ndims];
     int period[ndims];
     dims[0] = dims[1] = sqrt(size);
@@ -203,11 +201,12 @@ int main(int argc, char *argv[]) {
     // La raiz es el proceso que está en la diagonal, cuyo rango coincide con el índice de columna
     MPI_Bcast(xj, tam, MPI_INT, coords[1], comm_columna);
 
+    y_parcial = new int [tam];
+
     // Barrera para asegurar que todos los procesos comiencen a la vez
     MPI_Barrier(MPI_COMM_WORLD);
     tInicio = MPI_Wtime();
-
-    y_parcial = new int [tam];
+    
     for (int i = 0 ; i < tam ; ++i) {
         y_parcial[i] = 0;
 
@@ -216,25 +215,25 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    MPI_Barrier(MPI_COMM_WORLD);
+    tFin = MPI_Wtime();
+
     // Reducir por filas el resultado de cada subvector
     yi = new int [tam];
     MPI_Reduce(y_parcial, yi, tam, MPI_INT, MPI_SUM, coords[0], comm_fila);
 
-    MPI_Barrier(MPI_COMM_WORLD);
-    tFin = MPI_Wtime();
-
-    if (rank == 0 || rank == 3) {
-        for (int i = 0 ; i < tam ; ++i) {
-            cout << yi[i] << " ";
-        }   
-    }
-
     // Reunir todo el vector y en el procesador 0
     if (coords[0] == coords[1]) {
-        //MPI_Gather(yi, n, MPI_INT, y, n, MPI_INT, 0, comm_diagonal);
+        MPI_Gather(yi, tam, MPI_INT, y, tam, MPI_INT, 0, comm_diagonal);
     }
 
-    /*MPI_Finalize();
+    delete [] xj;
+    delete [] y_parcial;
+    delete [] yi;
+    delete [] buf_envio;
+    delete [] buf_recep;
+
+    MPI_Finalize();
 
     if (rank == 0) {
         unsigned int errores = 0;
@@ -254,7 +253,6 @@ int main(int argc, char *argv[]) {
 
         delete [] y;
         delete [] comprueba;
-        delete [] A[0];
 
         if (errores) {
             cout << "Hubo " << errores << " errores." << endl;
@@ -275,10 +273,9 @@ int main(int argc, char *argv[]) {
                 cout << "La ganancia es: " << (tFinSec - tInicioSec) / (tFin - tInicio) << endl;
             }
         }
-    }*/
+    }
 
     delete [] x;
-    MPI_Finalize();
 
     return 0;
 }
