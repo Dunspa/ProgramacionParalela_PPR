@@ -147,6 +147,14 @@ int main(int argc, char *argv[]) {
         MPI_Type_vector(tam, tam, n, MPI_INT, &MPI_BLOQUE);
         MPI_Type_commit(&MPI_BLOQUE);
 
+        // Copiar matriz a un vector para trabajar mejor con ella
+        int *matriz_A = new int [n * n];
+        for (int i = 0 ; i < n ; ++i) {
+            for (int j = 0 ; j < n ; ++j) {
+                matriz_A[i * n + j] = A[i][j];
+            }
+        }
+
         // Empaquetar bloque en el buffer de envío
         for (int i = 0, posicion = 0 ; i < size ; ++i) {
             // Calculo la posición de comienzo de cada submatriz
@@ -154,7 +162,7 @@ int main(int argc, char *argv[]) {
             int columna_P = i % raiz;
             int comienzo = (columna_P * tam) + (fila_P * tam * tam * raiz);
             
-            MPI_Pack(A[0], 1, MPI_BLOQUE, buf_envio, sizeof(int) * n * n, &posicion, MPI_COMM_WORLD);
+            MPI_Pack(&matriz_A[comienzo], 1, MPI_BLOQUE, buf_envio, sizeof(int) * n * n, &posicion, MPI_COMM_WORLD);
         }
 
         // Liberar tipo de bloque
@@ -178,6 +186,7 @@ int main(int argc, char *argv[]) {
 
         // Destruir matriz local
         delete [] A;
+        delete [] matriz_A;
     }
 
     // Distribución de la matriz entre los procesos (desde el proceso 0)
