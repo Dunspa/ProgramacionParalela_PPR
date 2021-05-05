@@ -7,7 +7,7 @@ rm resultados/tiempos*
 rm resultados/grafica*
 
 # Ejecutar el algoritmo 1d para distinto tamaño del problema
-for n in 300 600 900 1200 1400 
+for n in 300 600 900 1200 1400
 do
     echo -n $n "" >> "resultados/tiempos_1d.dat"
     mpirun --oversubscribe -np 4 matrizvector_1d $n 1 >> "resultados/tiempos_1d.dat"
@@ -16,11 +16,16 @@ do
 done
 
 # Ejecutar el algoritmo 2d para distinto tamaño del problema
-#for n in 300 600 900 1200 1400 
-#do
-#    ./matrizvector_secuencial $n >> "resultados/tiempos_2d.dat"
-#    mpirun -np 4
-#done
+for n in 300 600 900 1200 
+do
+    echo -n $n "" >> "resultados/tiempos_2d.dat"
+    mpirun --oversubscribe -np 4 matrizvector_2d $n 1 >> "resultados/tiempos_2d.dat"
+    mpirun --oversubscribe -np 9 matrizvector_2d $n 1 >> "resultados/tiempos_2d.dat"
+    echo "" >> "resultados/tiempos_2d.dat"
+done
+
+echo -n 1400 "" >> "resultados/tiempos_2d.dat"
+mpirun --oversubscribe -np 4 matrizvector_2d 1400 1 >> "resultados/tiempos_2d.dat"
 
 # Generar gráficas
 gnuplot -p grafica.gp
