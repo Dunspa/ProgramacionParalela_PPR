@@ -207,21 +207,14 @@ int main(int argc, char *argv[]) {
     MPI_Barrier(MPI_COMM_WORLD);
     tInicio = MPI_Wtime();
 
-    // Se tiene más de un subvector final, se calcula cada vez un resultado
     y_parcial = new int [tam];
     for (int i = 0 ; i < tam ; ++i) {
         y_parcial[i] = 0;
 
         for (int j = 0 ; j < tam ; ++j) {
-            y_parcial[i] += buf_recep[j + (n * i)] * xj[j];
+            y_parcial[i] += buf_recep[j + (tam * i)] * xj[j];
         }
     }
-
-    /*for (int i = 0 ; i < tam ; ++i) {
-        cout << " Proceso " << rank << ": " << y_parcial[i];
-    }
-    cout << endl;
-
 
     // Reducir por filas el resultado de cada subvector
     yi = new int [tam];
@@ -230,18 +223,18 @@ int main(int argc, char *argv[]) {
     MPI_Barrier(MPI_COMM_WORLD);
     tFin = MPI_Wtime();
 
-    /*if (rank == 0 || rank == 3) {
+    if (rank == 0 || rank == 3) {
         for (int i = 0 ; i < tam ; ++i) {
             cout << yi[i] << " ";
         }   
-    }*/
-
-    // Reunir todo el vector y en el procesador 0
-    /*if (coords[0] = coords[1]) {
-        MPI_Gather(yi, n, MPI_INT, y, n, MPI_INT, 0, comm_diagonal);
     }
 
-    MPI_Finalize();
+    // Reunir todo el vector y en el procesador 0
+    if (coords[0] == coords[1]) {
+        //MPI_Gather(yi, n, MPI_INT, y, n, MPI_INT, 0, comm_diagonal);
+    }
+
+    /*MPI_Finalize();
 
     if (rank == 0) {
         unsigned int errores = 0;
@@ -282,16 +275,10 @@ int main(int argc, char *argv[]) {
                 cout << "La ganancia es: " << (tFinSec - tInicioSec) / (tFin - tInicio) << endl;
             }
         }
-    }
+    }*/
 
     delete [] x;
-
-    /*cout << endl;
-    for (int i = 0 ; i < tam ; ++i) {
-        cout << "Proceso " << rank << ": " << xj[i] << " ";
-    }
-    cout << endl;*/
-    
     MPI_Finalize();
+
     return 0;
 }
