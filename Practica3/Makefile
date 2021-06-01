@@ -2,6 +2,12 @@
 
 all: bbseq bbpar
 
+bbpar: bbpar.o libbb.o
+	mpicxx -O3 bbpar.o libbb.o -o bbpar
+
+bbpar.o: bbpar.cc
+	mpicxx -O3 -c bbpar.cc
+
 bbseq: bbseq.o libbb.o
 	mpicxx -O3 bbseq.o libbb.o -o bbseq
 	
