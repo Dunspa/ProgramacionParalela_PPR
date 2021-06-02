@@ -13,33 +13,48 @@
 using namespace std;
 
 unsigned int NCIUDADES;
-int rank, size, tag;
-MPI_Status estado;
+int rank, size, tag, flag;
+int p_trabajo;  // Proceso al que enviar el trabajo
+tPila pila2;    // pila de nodos a enviar
+MPI_Status estado_mensaje;
+
+// No ceder nodos si el tamaño de la pila está por debajo del umbral
+const int UMBRAL_PILA = 2;
 
 // Algoritmo de equilibrado de carga con detección de fin
-void Equilibrar_Carga(tPila* pila, bool* activo) {
+void Equilibrar_Carga(tPila& pila, bool& activo) {
     // El proceso no tiene nodos para trabajar: pedir nodos a otros procesos
     if (pila.vacia()) {
         // Enviar mensaje de petición de trabajo
-        MPI_Send(rank, 1, MPI_INT, siguiente, 0, MPI_COMM_WORLD);
+        MPI_Send(rank, 1, MPI_INT, siguiente, PETICION, MPI_COMM_WORLD);
 
         // Esperar a conseguir trabajo
         while (pila.vacia() && activo) {
-            // Sondear respuesta
-            MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &estado);
+            // Sondear mensajes
+            MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &estado_mensaje);
 
-            switch (estado.MPI_TAG) {
+            switch (estado_mensaje.MPI_TAG) {
                 // Petición de trabajo
                 case PETICION:
+                    // Proceso en estado activo
+                    estado = ACTIVO;
+
                     // Recibir mensaje de petición de trabajo
-                    MPI_Recv();
+                    MPI_Recv(&p_trabajo, 1, MPI_INT, MPI_ANY_SOURCE, PETICION, MPI_COMM_WORLD, &estado_mensaje);
 
-                    if (estado.MPI_SOURCE == rank) {  // Petición devuelta
+                    if (estado_mensaje.MPI_SOURCE == rank) {  // Petición devuelta
+                        estado = PASIVO;
 
+                        // Reiniciar detección de fin
+                        if (token_presente) {
+                            MPI_Send(BLANCO, 1, MPI_INT, anterior, TOKEN, MPI_COMM_WORLD);
+                        }
                     } else {  // Petición de otro proceso
-                        // Pasar petición de trabajo al siguiente proceso
-                        MPI_Send();
+                        
                     }
+
+                    // Pasar petición de trabajo al siguiente proceso
+                    MPI_Send(p_trabajo, 1, MPI_INT, siguiente, PETICION, MPI_COMM_WORLD);
 
                     break;
 
@@ -47,17 +62,53 @@ void Equilibrar_Carga(tPila* pila, bool* activo) {
                 case NODOS:
                     // Recibir nodos del proceso donante
                     int numnodos;
-                    MPI_Get_count(&estado, MPI_INT, &numnodos);
-                    MPI_Recv(pila.nodos, , MPI_INT, estado.MPI_SOURCE, MPI_COMM_WORLD, &estado);
-
-                    // Almacenar nodos recibidos en la pila
+                    MPI_Get_count(&estado_mensaje, MPI_INT, &numnodos);
+                    MPI_Recv(pila.nodos, numnodos, MPI_INT, estado_mensaje.MPI_SOURCE, NODOS, MPI_COMM_WORLD, &estado_mensaje);
 
                     break;
 
+                // Se recibe el token
                 case TOKEN:
+                    token_presente = true;
+                    MPI_Recv(&color_token, 1, MPI_INT, estado_mensaje.MPI_SOURCE, TOKEN, MPI_COMM_WORLD, &estado_mensaje);
+
+                    // Si el proceso es pasivo, se envía el token al proceso anterior, si no, lo mantiene
+                    if (estado == PASIVO) {
+                        if (rank == 0 && color == BLANCO && color_token == BLANCO) {    // Terminación detectada
+                            activo = false;
+                        } else {
+                            // Cambiar el color al token
+                            if (rank == 0) {
+                                color_token = BLANCO;
+                            } else if (color == NEGRO) {
+                                color_token = NEGRO;
+                            }
+
+                            token_presente = false;
+                            MPI_Send(color_token, 1, MPI_INT, anterior, TOKEN, MPI_COMM_WORLD);
+                        }
+                    }
+
                     break;
 
+                // Segunda confirmación
                 case FIN:
+                    // Proceso en estado pasivo
+                    estado = PASIVO;
+
+                    if (token_presente) {
+                        if (rank == 0) {
+                            color_token = BLANCO;
+                        } else if (color == NEGRO) {
+                            color_token = NEGRO;
+                        }
+
+                        color = BLANCO;
+                        token_presente = false;
+                        activo = false;
+                        MPI_Send(color_token, 1, MPI_INT, anterior, FIN, MPI_COMM_WORLD);
+                    }
+
                     break;
             }
         }
@@ -66,9 +117,26 @@ void Equilibrar_Carga(tPila* pila, bool* activo) {
     // El proceso tiene nodos para trabajar
     if (activo) {
         // Sondear si hay mensajes pendientes de otros procesos
-        while (MPI_Iprobe()) {
-            // Recibir mensaje de petición de trabajo
-            MPI_Recv();
+        flag = 1;
+        while (flag > 0) {
+            MPI_Iprobe(MPI_ANY_SOURCE, PETICION, MPI_COMM_WORLD, &flag, &estado_mensaje);
+
+            // Se ha recibido un mensaje
+            if (flag > 0) {
+                // Recibir mensaje de petición de trabajo
+                MPI_Recv(&p_trabajo, 1, MPI_INT, estado_mensaje.MPI_SOURCE, PETICION, MPI_COMM_WORLD, &estado_mensaje);
+
+                // Enviar la mitad de mis nodos
+                if (pila.tamanio > UMBRAL_PILA) {
+                    if (rank < estado_mensaje.MPI_SOURCE) color = NEGRO;
+
+                    pila.divide(&pila2);
+                    MPI_Send(pila2.nodos, pila2.tamanio, MPI_INT, estado_mensaje.MPI_SOURCE, NODOS, MPI_COMM_WORLD);
+                } else {
+                    // Pasar petición de trabajo al siguiente proceso
+                    MPI_Send(&p_trabajo, 1, MPI_INT, siguiente, PETICION, MPI_COMM_WORLD);
+                }
+            }
         }
     }
 }
@@ -108,11 +176,14 @@ int main(int argc, char** argv) {
     // Anillo de procesos
     anterior = (rank - 1 + size) % size;
     siguiente = (rank + 1) % size;
+    color = BLANCO;
 
     // Proceso 0 lee la matriz del problema inicial
     if (rank == 0) {
         // El proceso 0 empieza teniendo el token
         token_presente = true;
+        color_token = BLANCO;
+        estado = ACTIVO;
 
         InicNodo(&nodo);            // inicializa estructura nodo
         LeerMatriz(argv[2], tsp0);  // lee matriz de fichero
@@ -126,9 +197,10 @@ int main(int argc, char** argv) {
     if (rank != 0) {
         // El token lo tiene el proceso 0
         token_presente = false;
+        estado = PASIVO;
 
         // Realizar peticiones de trabajo
-        Equilibrar_Carga(&pila, &activo);
+        Equilibrar_Carga(pila, activo);
 
         // No se cumple la condición de fin
         if (activo) {
@@ -178,7 +250,7 @@ int main(int argc, char** argv) {
         // Se ha encontrado una nueva cota superior
         if (nueva_U) pila.acotar(U);
 
-        Equilibrar_Carga(&pila, &activo);
+        Equilibrar_Carga(pila, activo);
         if (activo) {
             pila.pop(nodo);
         }
@@ -189,14 +261,17 @@ int main(int argc, char** argv) {
     t = MPI_Wtime() - t;
 
     // Obtener iteraciones totales
+    // int total_iteraciones = 0;
     // MPI_Reduce();
 
     MPI_Finalize();
 
-    cout << "Solucion: \n" << cout;
-    EscribeNodo(&solucion);
-    cout << "Tiempo gastado = " << t << endl;
-    cout << "Numero de iteraciones = " << iteraciones << endl << endl;
+    if (rank == 0) {
+        cout << "Solucion: \n" << cout;
+        EscribeNodo(&solucion);
+        cout << "Tiempo gastado = " << t << endl;
+        cout << "Numero de iteraciones = " << iteraciones << endl << endl;
+    }
 
     liberarMatriz(tsp0);
 }
