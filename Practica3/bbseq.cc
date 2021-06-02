@@ -14,7 +14,7 @@ using namespace std;
 unsigned int NCIUDADES;
 int rank, size;
 
-main(int argc, char** argv) {
+int main(int argc, char** argv) {
     MPI::Init(argc, argv);
     switch (argc) {
         case 3:
