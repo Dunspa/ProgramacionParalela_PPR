@@ -60,9 +60,6 @@ void Equilibrar_Carga(tPila& pila, bool& activo, tNodo& solucion, int rank) {
                     // Recibir mensaje de petición de trabajo
                     MPI_Recv(&p_trabajo, 1, MPI_INT, estado_mensaje.MPI_SOURCE, PETICION, MPI_COMM_WORLD, &estado_mensaje);
 
-                    // Pasar petición de trabajo al siguiente proceso
-                    MPI_Send(&p_trabajo, 1, MPI_INT, siguiente, PETICION, MPI_COMM_WORLD);
-
                     if (p_trabajo == rank) {  // Petición devuelta
                         // Proceso en estado pasivo
                         estado = PASIVO;
@@ -82,6 +79,9 @@ void Equilibrar_Carga(tPila& pila, bool& activo, tNodo& solucion, int rank) {
                             MPI_Send(&color_token, 1, MPI_INT, anterior, TOKEN, MPI_COMM_WORLD);
                         }
                     }
+
+                    // Pasar petición de trabajo al siguiente proceso
+                    MPI_Send(&p_trabajo, 1, MPI_INT, siguiente, PETICION, MPI_COMM_WORLD);
 
                     break;
 
@@ -123,8 +123,8 @@ void Equilibrar_Carga(tPila& pila, bool& activo, tNodo& solucion, int rank) {
                             MPI_Send(solucion.datos, 2 * NCIUDADES, MPI_INT, siguiente, FIN, MPI_COMM_WORLD);
 
                             // Recibir último mensaje fin
-                            tNodo nueva_solucion;  // Nueva solución obtenida de otro proceso
-                            MPI_Recv(nueva_solucion.datos, 2 * NCIUDADES, MPI_INT, estado_mensaje.MPI_SOURCE, FIN,
+                            tNodo nueva_solucion;
+                            MPI_Recv(nueva_solucion.datos, 2 * NCIUDADES, MPI_INT, anterior, FIN,
                                      MPI_COMM_WORLD, &estado_mensaje);
 
                             // Quedarme con la mejor solución de las últimas generadas por cada proceso
