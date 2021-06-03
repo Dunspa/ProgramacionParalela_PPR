@@ -18,4 +18,4 @@ libbb.o: libbb.cc libbb.h
 	mpicxx -O3 -c  libbb.cc 
 
 clean:
-	rm -f *.o bbseq
+	rm -f *.o bbseq bbpar
