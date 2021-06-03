@@ -330,6 +330,7 @@ int main(int argc, char** argv) {
         iteraciones++;
     }
 
+    MPI_Barrier(MPI_COMM_WORLD);
     t = MPI_Wtime() - t;
 
     MPI_Finalize();
